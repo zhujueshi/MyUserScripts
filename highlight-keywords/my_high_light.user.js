@@ -48,7 +48,7 @@
             }
             Object.keys(defult).forEach((key2) => {
                 if (!cache[key][key2]) {
-                    console.log(defult[key2])
+                    // console.log(defult[key2])
                     cache[key][key2] = defult[key2]
                 }
             })
@@ -636,7 +636,8 @@
                         rule: GM_getValue('key'),
                         edit: this.addEdit(GM_getValue('key')),
                         showSeting: false,
-                        config_add: false
+                        config_add: false,
+                        file_is_txt: false
                     }
                 },
 
@@ -758,14 +759,15 @@
                     },
 
                     // 解析配置
-                    importFileJSON(ev) {
+                    importFileTxt(ev) {
                         return new Promise((resolve, reject) => {
                             const fileDom = ev.target,
-                                file = fileDom.files[0]
+                            file = fileDom.files[0]
 
                             // 格式判断
-                            if (file.type !== 'application/json') {
-                                reject('仅允许上传json文件')
+                            console.log(file.type);
+                            if (file.type !== 'text/plain') {
+                                reject('文件类型错误')
                             }
                             // 检验是否支持FileRender
                             if (typeof FileReader === 'undefined') {
@@ -780,14 +782,15 @@
                             reader.readAsText(file) // 读取的结果还有其他读取方式，我认为text最为方便
 
                             reader.onerror = (err) => {
-                                reject('json文件解析失败', err)
+                                reject('文件解析失败', err)
                             }
 
                             reader.onload = () => {
                                 const resultData = reader.result
                                 if (resultData) {
                                     try {
-                                        const importData = JSON.parse(resultData)
+                                        const importData = resultData
+                                        this.file_is_txt = true
                                         resolve(importData)
                                     } catch (error) {
                                         reject('读取数据解析失败', error)
@@ -798,9 +801,84 @@
                             }
                         })
                     },
+                    // 解析配置
+                    importFileJSON(ev) {
+                        return new Promise((resolve, reject) => {
+                            const fileDom = ev.target,
+                                file = fileDom.files[0]
+
+                            // 格式判断
+                            if (file.type !== 'application/json') {
+                                alert('仅允许上传json文件')
+                                reject('仅允许上传json文件')
+                            }
+                            // 检验是否支持FileRender
+                            if (typeof FileReader === 'undefined') {
+                                alert('当前浏览器不支持FileReader')
+                                reject('当前浏览器不支持FileReader')
+                            }
+
+                            // 执行后清空input的值，防止下次选择同一个文件不会触发onchange事件
+                            ev.target.value = ''
+
+                            // 执行读取json数据操作
+                            const reader = new FileReader()
+                            reader.readAsText(file) // 读取的结果还有其他读取方式，我认为text最为方便
+
+                            reader.onerror = (err) => {
+                                alert('json文件解析失败', err)
+                                reject('json文件解析失败', err)
+                            }
+
+                            reader.onload = () => {
+                                const resultData = reader.result
+                                if (resultData) {
+                                    try {
+                                        const importData = JSON.parse(resultData)
+                                        resolve(importData)
+                                    } catch (error) {
+                                        alert('读取数据解析失败', error)
+                                        reject('读取数据解析失败', error)
+                                    }
+                                } else {
+                                    alert('读取数据解析失败', error)
+                                    reject('读取数据解析失败', error)
+                                }
+                            }
+                        })
+                    },
 
                     // 导入本地配置
                     file_read(e) {
+                        this.file_is_txt = false
+                        this.importFileTxt(e).then(res => {
+                            console.log("importFileTxt", res) 
+                            var parts = res.split(/[\n,]/);
+                            // console.log(parts);
+                            let cache = GM_getValue('key')
+                            
+                            let add_new = {
+                                limit: [],
+                                info: '',
+                                words: [],
+                                color: '#85d228',
+                                textcolor: '#0f100f'
+                            }
+                            parts.forEach(part => {
+                                if (part != '')
+                                {
+                                    add_new.words.push(part)
+                                }
+                            })
+                            cache['key_' + Math.floor(Math.random() * 10000000000)] = add_new
+                            console.log(cache);
+                            GM_setValue('key', cache)
+                            this.rule = GM_getValue('key')
+                            this.edit = this.addEdit(add_new)
+                        });
+                        if (this.file_is_txt) {
+                            return
+                        }
                         this.importFileJSON(e).then(res => {
                             // 合并还是覆盖
                             if (this.config_add) {
@@ -809,8 +887,7 @@
                                     cache['key_' + Math.floor(Math.random() * 10000000000)] = GM_getValue('key')[key]
                                 })
                                 cache = { ...cache, ...res }
-                                console.log(cache)
-
+                                // console.log(cache)
                                 GM_setValue('key', cache)
                             } else {
                                 GM_setValue('key', res)
@@ -941,12 +1018,9 @@
             menu.appendChild(saveDiv);
             
             document.getElementById('divid_' + classesKey)?.addEventListener('click', (event) => {
-                // const selectedText = window.getSelection().toString();
-                console.log("divid_" + classesKey);
+                // console.log("divid_" + classesKey);
                 if (savedSelectedText) {
-                    // 使用 GM_setValue 保存选中的文本  
-                    // GM_setValue('savedText', selectedText);
-                    console.log("save", savedSelectedText);
+                    // console.log("save", savedSelectedText);
                     save_word(classesKey, savedSelectedText);
                     // alert('保存成功: ' + savedSelectedText);
                     menu.style.display = 'none'; // 隐藏菜单
@@ -971,17 +1045,7 @@
     `;
     document.body.appendChild(menu);
     create_savediv();
-    
     let savedSelectedText = ""; // 用于存储选中的文本
-    function name(params) {
-        Object.keys(GM_getValue('key')).forEach(classesKey => {
-            let info = GM_getValue('key')[classesKey].info
-            let words = GM_setValue('key')[classesKey].words
-            let color = GM_getValue('key')[classesKey].color
-            let limit = GM_getValue('key')[classesKey].limit
-            let textcolor = GM_getValue('key')[classesKey].textcolor
-        })
-    }
     // 处理鼠标松开事件
     document.addEventListener('mouseup', (event) => {
         const selectedText = window.getSelection().toString().trim();
@@ -990,7 +1054,7 @@
             menu.style.top = `${event.pageY}px`;
             menu.style.left = `${event.pageX}px`;
             menu.style.display = 'block';
-            console.log(selectedText);
+            // console.log(selectedText);
             // 点击其他地方隐藏菜单
             // document.addEventListener('click', () => {
             //     menu.style.display = 'none';

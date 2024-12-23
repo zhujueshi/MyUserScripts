@@ -95,7 +95,7 @@
     {
       // 添加要筛选的关键字
         // const [letters, numbers] = word.toLowerCase().split(/-|\d+/).filter(Boolean);
-        const letters = str.match(/[a-zA-Z]+/g);
+        const letters = str.toLowerCase().match(/[a-zA-Z]+/g);
         const numPart = str.match(/\d+/g); // 提取数字部分
         if (letters && numPart)
         {
@@ -245,6 +245,7 @@
                         newNode.addEventListener('click', (e) => {
                             navigator.clipboard.writeText(e.target.innerText)
                         })
+                        newNode.addEventListener('contextmenu', menu_del_mouseup_loose_fun);
                     }
                 })
             }
@@ -987,11 +988,9 @@
                     // console.log(elMap);
                     elMap.forEach((value, el) => {
                         setTimeout(() => {
-
                             let nodeMap = textMap(el)
                             HIGHTLIGHT.highlight(nodeMap)
                             nodeMap = null
-
                         }, 1)
                     })
                     elMap.clear()
@@ -1006,12 +1005,28 @@
     // 创建ui
     GUI.create()
 
-    function save_word(divid, str){
+    function save_word(key_id, str){
         let cache = GM_getValue('key')
         Object.keys(cache).forEach(key => {
-            if (key == divid) {
+            if (key == key_id) {
                 cache[key].words.push(str)
-                console.log(cache[key].words)
+                // console.log(cache[key].words)
+            }
+        })
+        GM_setValue('key', cache)
+    }
+    function del_word(key_id, str){
+        let cache = GM_getValue('key')
+        Object.keys(cache).forEach(key => {
+            if (key == key_id && cache[key_id].words.length > 0) {
+                for (let i = 0; i < cache[key_id].words.length; i++) {
+                    if(get_name(cache[key_id].words[i]) == get_name(str))
+                    {
+                        console.log(cache[key_id].words[i])
+                        cache[key_id].words.splice(i, 1);
+                        break
+                    }
+                }
             }
         })
         GM_setValue('key', cache)
@@ -1040,6 +1055,9 @@
                     save_word(classesKey, savedSelectedText);
                     // alert('保存成功: ' + savedSelectedText);
                     menu.style.display = 'none'; // 隐藏菜单
+                    let nodeMap = textMap(document.body)
+                    HIGHTLIGHT.highlight(nodeMap)
+                    nodeMap.clear()
                 } else {
                     // alert('没有选中文本！');
                 }
@@ -1060,6 +1078,19 @@
         <div style="cursor: pointer;" onclick="document.getElementById('custom-context-menu').style.display='none'">关闭</div>
     `;
     document.body.appendChild(menu);
+    const menu_del = document.createElement('div');
+    menu_del.id = 'custom-context-menu_del';
+    menu_del.style.position = 'absolute';//
+    menu_del.style.backgroundColor = '#ffffff';
+    menu_del.style.border = '1px solid black';
+    menu_del.style.zIndex = '1000';
+    menu_del.style.padding = '10px';
+    menu_del.style.display = 'none';
+    menu_del.innerHTML = `
+        <div id="div_mouseupdel" style="cursor: pointer; margin-bottom: 5px;">删除</div>
+        <div style="cursor: pointer;" onclick="document.getElementById('custom-context-menu_del').style.display='none'">关闭</div>
+    `;
+    document.body.appendChild(menu_del);
     create_savediv();
     let savedSelectedText = ""; // 用于存储选中的文本
     // 处理鼠标松开事件
@@ -1070,6 +1101,9 @@
             menu.style.top = `${event.pageY}px`;
             menu.style.left = `${event.pageX}px`;
             menu.style.display = 'block';
+            let nodeMap = textMap(document.body)
+            HIGHTLIGHT.highlight(nodeMap)
+            nodeMap.clear()
             // console.log(selectedText);
             // 点击其他地方隐藏菜单
             // document.addEventListener('click', () => {
@@ -1082,7 +1116,33 @@
             menu.style.display = 'none'; // 隐藏菜单  
         }
     }
-    // console.log("word_stroke_dis=", GM_getValue('word_stroke_dis'))
+    // 处理鼠标松开事件
+    function menu_del_mouseup_loose_fun(event) {
+        if (event.target.tagName === 'SPAN' && event.target.classList.contains('mt_highlight')) {
+            event.preventDefault();
+            menu_del.style.top = `${event.pageY}px`;
+            menu_del.style.left = `${event.pageX}px`;
+            menu_del.style.display = 'block';
+            // console.log("tagName=",event.target.tagName);
+            console.log("classesKey=", event.target.getAttribute('classeskey'));
+            // console.log("innerText=",event.target.innerText);
+            const deltext = event.target.innerText
+            const delclass =  event.target.getAttribute('classeskey')
+            // 点击其他地方隐藏菜单
+            document.addEventListener('click', () => {
+                menu_del.style.display = 'none';
+                // document.body.removeChild(menu);
+            }, { once: true });
+            document.getElementById('div_mouseupdel')?.addEventListener('click', (event) => {
+                // console.log("div_mouseupdel tagName=",event.target.tagName);
+                // console.log("div_mouseupdel innerText=",deltext);
+                del_word(delclass, deltext)
+                // alert('要删除的文本: ' + deltext); // 这里可以替换成删除操作
+                menu_del.style.display = 'none'; // 隐藏菜单
+            });
+        }
+    }
+
     if (GM_getValue('word_stroke_dis')) {
         document.getElementById('word_stroke').innerHTML = "划词开启";
     } else {
@@ -1117,5 +1177,23 @@
      //       event.preventDefault();
       //  }
     //});
+
+    // 定时检查内容的变化
+    let lastValue = GM_getValue('key');
+    function check_GM(){
+        const newValue = GM_getValue('key');
+        // 检查值是否有变化
+        console.log("check_GM");
+        if (newValue !== lastValue) {
+            lastValue = newValue; // 更新最后的值
+            // 更新显示
+            // console.log('值已更新: ${newValue }')
+            let nodeMap = textMap(document.body)
+            // console.log(nodeMap);
+            HIGHTLIGHT.highlight(nodeMap)
+            nodeMap.clear()
+        }
+    }
+    setInterval(check_GM, 4000); // 每3秒检查一次
 }
 )()

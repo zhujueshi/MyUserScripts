@@ -37,6 +37,7 @@
         if (!GM_getValue('key')) { GM_setValue('key', defaultWords) }
         if (Object.keys(GM_getValue('key')).length == 0) { GM_setValue('key', defaultWords) }
         // GM_setValue("key",this.defaultWords);
+        if (!GM_getValue('word_stroke_dis')) { GM_setValue('word_stroke_dis', false) }
 
         let cache = GM_getValue('key')
         Object.keys(cache).forEach(key => {
@@ -296,6 +297,7 @@
 
                 <div @click="config_out">导出配置文件</div>
                 <div @click="refresh">刷新</div>
+                <div id="word_stroke" @click="word_stroke">划词关闭</div>
                 <div class="close_seting" @click="close_seting">关闭</div>
             </div>
 
@@ -623,7 +625,6 @@
             let seting_box = document.querySelector('#mt_seting_box')
             seting_box.innerHTML = this.setingTemplate
 
-
             // 创建根节点样式
             GM_addStyle(this.setingStyle)
             // this.devCss()
@@ -637,7 +638,8 @@
                         edit: this.addEdit(GM_getValue('key')),
                         showSeting: false,
                         config_add: false,
-                        file_is_txt: false
+                        file_is_txt: false,
+                        word_stroke_dis: GM_getValue('word_stroke_dis')
                     }
                 },
 
@@ -915,6 +917,21 @@
                     // 刷新
                     refresh() {
                         location.reload()
+                    },
+                    // 刷新
+                    word_stroke() {
+                        if (this.word_stroke_dis) {
+                            document.getElementById('word_stroke').innerHTML = "划词关闭";
+                            // console.log("划词关闭");
+                            this.word_stroke_dis = false;
+                            document.addEventListener('mouseup', mouseup_loose_fun);
+                        } else {
+                            document.getElementById('word_stroke').innerHTML = "划词开启";
+                            // console.log("划词开启");
+                            this.word_stroke_dis = true;
+                            document.removeEventListener('mouseup', mouseup_loose_fun);
+                        }
+                        GM_setValue('word_stroke_dis', this.word_stroke_dis)
                     }
 
                 },
@@ -933,7 +950,7 @@
 
                 }
             })
-
+            //
         }
     }
 
@@ -988,9 +1005,8 @@
 
     // 创建ui
     GUI.create()
-    // 创建上下文菜单
-    function save_word(divid,str)
-    {
+
+    function save_word(divid, str){
         let cache = GM_getValue('key')
         Object.keys(cache).forEach(key => {
             if (key == divid) {
@@ -1047,7 +1063,7 @@
     create_savediv();
     let savedSelectedText = ""; // 用于存储选中的文本
     // 处理鼠标松开事件
-    document.addEventListener('mouseup', (event) => {
+    function mouseup_loose_fun(event) {
         const selectedText = window.getSelection().toString().trim();
         if (selectedText) {
             savedSelectedText = selectedText; // 存储当前选中的文本  
@@ -1065,7 +1081,14 @@
         {
             menu.style.display = 'none'; // 隐藏菜单  
         }
-    });
+    }
+    // console.log("word_stroke_dis=", GM_getValue('word_stroke_dis'))
+    if (GM_getValue('word_stroke_dis')) {
+        document.getElementById('word_stroke').innerHTML = "划词开启";
+    } else {
+        document.getElementById('word_stroke').innerHTML = "划词关闭";
+        document.addEventListener('mouseup', mouseup_loose_fun);
+    }
     
     // document.getElementById('div_save')?.addEventListener('click', (event) => {
     //     // const selectedText = window.getSelection().toString();

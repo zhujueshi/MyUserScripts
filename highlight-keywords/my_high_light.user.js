@@ -1226,23 +1226,32 @@
     }
     setInterval(check_GM, 4000); // 每3秒检查一次
 */
-    function handleVisibilityChange() {
+    // 添加双击事件监听器
+    document.addEventListener("dblclick", function (event) {
+        if (event.button === 0) {
+            // console.log("在扩展全局范围内鼠标左键双击了");
+            console.log("双击位置：", event.clientX, event.clientY);
+            let nodeMap = textMap(document.body)
+            HIGHTLIGHT.highlight(nodeMap)
+            nodeMap = null
+        }
+    });
+
+    // 添加visibilitychange事件监听器
+    document.addEventListener('visibilitychange', (event) => {
         if (document.visibilityState === 'visible') {
-            console.log('标签页获得焦点，处于可见状态');
+            // console.log('标签页获得焦点');
             let nodeMap = textMap(document.body)
             HIGHTLIGHT.highlight(nodeMap)
             nodeMap = null
         } else {
-            console.log('标签页失去焦点，处于不可见状态');
+            // console.log('标签页失去焦点');
         }
-    }
-
-    // 添加visibilitychange事件监听器
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    });
     
-    const nasWebDAVUrl = "https://192.168.1.6/1"; // 替换为实际的 NAS WebDAV 地址
-    const username = "1"; // NAS 上用于 WebDAV 访问的用户名
-    const password = "2"; // 对应的密码
+    const nasWebDAVUrl = ""; // 替换为实际的 NAS WebDAV 地址
+    const username = ""; // NAS 上用于 WebDAV 访问的用户名
+    const password = ""; // 对应的密码
     async function saveDataToNAS() {
         if (nasWebDAVUrl !="" && username !="" && password!="") {
             let cache = {}
@@ -1275,5 +1284,6 @@
         GM_setValue(key, val)
         saveDataToNAS()
     }
+    
 }
 )()

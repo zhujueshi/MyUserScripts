@@ -28,34 +28,43 @@
             'key_123': {
                 limit: [],//'baidu'
                 'info': '汉字测试',
-                'words': ['抖音', '快手', '网页', '平台', '的', '最', '一', '个', '多', '服务', '大'],
+                'words': ['我', '的', '关键字'],
                 'color': '#85d228',
                 'textcolor': '#3467eb'
             }
         }
         // 设置关键字默认值
-        if (!GM_getValue('key')) { GM_setValue('key', defaultWords) }
-        if (Object.keys(GM_getValue('key')).length == 0) { GM_setValue('key', defaultWords) }
-        // GM_setValue("key",this.defaultWords);
-        if (!GM_getValue('word_stroke_dis')) { GM_setValue('word_stroke_dis', false) }
+        if (GM_getValue('key') === undefined || Object.keys(GM_getValue('key')).length == 0) {
+            GM_setValue('key', defaultWords)
+            // GM_setValue("key",this.defaultWords);
+        }
+
+        if (GM_getValue('word_stroke_dis') === undefined) {
+            GM_setValue('word_stroke_dis', false)
+        }
 
         let cache = GM_getValue('key')
+        let need_save = false
         Object.keys(cache).forEach(key => {
             let defult = {
                 limit: [],
-                info: '',
+                info: "",
                 words: [],
-                color: '#85d228'
+                color: '#85d228',
+                textcolor: '#3467eb'
             }
             Object.keys(defult).forEach((key2) => {
-                if (!cache[key][key2]) {
-                    // console.log(defult[key2])
+                if (cache[key][key2] === undefined) {
+                    // console.log(key2)
                     cache[key][key2] = defult[key2]
+                    need_save = true
                 }
             })
         })
-
-        GM_setValue('key', cache)
+        if (need_save == true) {
+            // console.log("need_save defult");
+            key_save('key', cache)
+        }
     }
     /**
      * @description: 遍历找出所有文本节点
@@ -689,7 +698,7 @@
                             node.style.color = textcolor
                         })
                         // 保存到油猴中
-                        GM_setValue('key', this.rule)
+                        key_save('key', this.rule)
                     },
 
                     // 更新规则
@@ -711,7 +720,7 @@
                         this.editOff(key)
 
                         // 保存到油猴中
-                        GM_setValue('key', this.rule)
+                        key_save('key', this.rule)
                     },
 
                     // 添加新规则
@@ -728,8 +737,8 @@
                         this.$set(this.edit, key, false)
 
                         // 保存到油猴中
-                        GM_setValue('key', this.rule)
-                        console.log(2233)
+                        key_save('key', this.rule)
+                        // console.log(2233)
                     },
 
                     // 删除规则
@@ -744,7 +753,7 @@
                         }
 
                         // 保存到油猴中
-                        GM_setValue('key', this.rule)
+                        key_save('key', this.rule)
                     },
 
                     // 复制到粘贴板
@@ -876,8 +885,8 @@
                                 }
                             })
                             cache['key_' + Math.floor(Math.random() * 10000000000)] = add_new
-                            console.log(cache);
-                            GM_setValue('key', cache)
+                            // console.log(cache);
+                            key_save('key', cache)
                             this.rule = GM_getValue('key')
                             this.edit = this.addEdit(add_new)
                         });
@@ -893,9 +902,9 @@
                                 })
                                 cache = { ...cache, ...res }
                                 // console.log(cache)
-                                GM_setValue('key', cache)
+                                key_save('key', cache)
                             } else {
-                                GM_setValue('key', res)
+                                key_save('key', res)
                             }
                             initialize()
                             this.rule = GM_getValue('key')
@@ -1016,8 +1025,9 @@
                 // console.log(cache[key].words)
             }
         })
-        GM_setValue('key', cache)
+        key_save('key', cache)
     }
+
     function del_word(key_id, str){
         let cache = GM_getValue('key')
         Object.keys(cache).forEach(key => {
@@ -1032,7 +1042,7 @@
                 }
             }
         })
-        GM_setValue('key', cache)
+        key_save('key', cache)
     }
     // 创建功能菜单
     function create_savediv() {
@@ -1229,5 +1239,41 @@
 
     // 添加visibilitychange事件监听器
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    const nasWebDAVUrl = "https://192.168.1.6/1"; // 替换为实际的 NAS WebDAV 地址
+    const username = "1"; // NAS 上用于 WebDAV 访问的用户名
+    const password = "2"; // 对应的密码
+    async function saveDataToNAS() {
+        if (nasWebDAVUrl !="" && username !="" && password!="") {
+            let cache = {}
+            cache['key'] = GM_getValue('key')
+            cache['word_stroke_dis'] = GM_getValue('word_stroke_dis')
+            const data = JSON.stringify(cache); // JSON.stringify 处理后的对象等
+            const url = nasWebDAVUrl + "/key.json"; // 假设保存的文件名，可以根据需求修改
+            const headers = new Headers();
+            headers.append('Authorization', 'Basic ' + btoa(username + ':' + password));
+            headers.append('Content-Type', 'text/plain');
+    
+            try {
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: data
+                });
+                if (response.ok) {
+                    console.log('数据已成功通过 WebDAV 保存到 NAS 服务器');
+                } else {
+                    console.error('通过 WebDAV 保存数据到 NAS 服务器出错，状态码：', response.status);
+                }
+            } catch (error) {
+                console.error('发生错误：', error);
+            }
+        }
+    }
+    
+    function key_save(key, val) {
+        GM_setValue(key, val)
+        saveDataToNAS()
+    }
 }
 )()

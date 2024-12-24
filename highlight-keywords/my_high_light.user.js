@@ -241,6 +241,8 @@
                         let newNode = document.createElement('span')
                         newNode.innerHTML = newInnerHTML
                         node.parentElement.replaceChild(newNode, node)
+                        // console.log(node.parentElement.innerHTML);
+                        // node.parentElement.innerHTML = newInnerHTML
                         // 点击复制
                         newNode.addEventListener('click', (e) => {
                             navigator.clipboard.writeText(e.target.innerText)
@@ -294,7 +296,7 @@
                 <div @click="config_in_add">导入添加</div>
                 <div @click="config_in">导入覆盖</div>
 
-                <input type="file" class="config_file" accept=".json" @change="file_read($event)">
+                <input type="file" class="config_file" accept=".json,.txt" @change="file_read($event)">
 
                 <div @click="config_out">导出配置文件</div>
                 <div @click="refresh">刷新</div>
@@ -910,9 +912,10 @@
                             link.download = name //  设置下载的默认文件名
                             link.click()
                         }
-
-                        exportJson('mt_hight_light_config.json', JSON.stringify(this.rule))
-
+                        let cache = {}
+                        cache['key'] = GM_getValue('key')
+                        cache['word_stroke_dis'] = GM_getValue('word_stroke_dis')
+                        exportJson('mt_hight_light_config.json', JSON.stringify(cache))
                     },
 
                     // 刷新
@@ -1020,7 +1023,7 @@
         Object.keys(cache).forEach(key => {
             if (key == key_id && cache[key_id].words.length > 0) {
                 for (let i = 0; i < cache[key_id].words.length; i++) {
-                    if(get_name(cache[key_id].words[i]) == get_name(str))
+                    if (get_name(cache[key_id].words[i]) == str)
                     {
                         console.log(cache[key_id].words[i])
                         cache[key_id].words.splice(i, 1);
@@ -1046,15 +1049,16 @@
             saveDiv.style.color = textcolor; // 按钮文字颜色  
             saveDiv.style.textAlign = 'center';
             saveDiv.style.borderRadius = '3px';
-            menu.appendChild(saveDiv);
+            select_fun_menu.appendChild(saveDiv);
             
             document.getElementById('divid_' + classesKey)?.addEventListener('click', (event) => {
                 // console.log("divid_" + classesKey);
-                if (savedSelectedText) {
-                    // console.log("save", savedSelectedText);
-                    save_word(classesKey, savedSelectedText);
-                    // alert('保存成功: ' + savedSelectedText);
-                    menu.style.display = 'none'; // 隐藏菜单
+                if (select_text) {
+                    // console.log("save", select_text);
+                    save_word(classesKey, select_text);
+                    select_text = ""; // 清空选中的文本
+                    // alert('保存成功: ' + select_text);
+                    select_fun_menu.style.display = 'none'; // 隐藏菜单
                     let nodeMap = textMap(document.body)
                     HIGHTLIGHT.highlight(nodeMap)
                     nodeMap.clear()
@@ -1065,19 +1069,19 @@
         })
     }
 
-    const menu = document.createElement('div');
-    menu.id = 'custom-context-menu';
-    menu.style.position = 'absolute';//
-    menu.style.backgroundColor = '#ffffff';
-    menu.style.border = '1px solid black';
-    menu.style.zIndex = '1000';
-    menu.style.padding = '10px';
-    menu.style.display = 'none';
+    const select_fun_menu = document.createElement('div');
+    select_fun_menu.id = 'custom-context-select_fun_menu';
+    select_fun_menu.style.position = 'absolute';//
+    select_fun_menu.style.backgroundColor = '#ffffff';
+    select_fun_menu.style.border = '1px solid black';
+    select_fun_menu.style.zIndex = '1000';
+    select_fun_menu.style.padding = '10px';
+    select_fun_menu.style.display = 'none';
     // <div id="div_save" style="cursor: pointer; margin-bottom: 5px;">处理文本</div>
-    menu.innerHTML = `
-        <div style="cursor: pointer;" onclick="document.getElementById('custom-context-menu').style.display='none'">关闭</div>
+    select_fun_menu.innerHTML = `
+        <div style="cursor: pointer;" onclick="document.getElementById('custom-context-select_fun_menu').style.display='none'">关闭</div>
     `;
-    document.body.appendChild(menu);
+    document.body.appendChild(select_fun_menu);
     const menu_del = document.createElement('div');
     menu_del.id = 'custom-context-menu_del';
     menu_del.style.position = 'absolute';//
@@ -1092,31 +1096,31 @@
     `;
     document.body.appendChild(menu_del);
     create_savediv();
-    let savedSelectedText = ""; // 用于存储选中的文本
+    let select_text = ""; // 用于存储选中的文本
+    let select_class = ""; // 用于存储选中的class
     // 处理鼠标松开事件
     function mouseup_loose_fun(event) {
         const selectedText = window.getSelection().toString().trim();
         if (selectedText) {
-            savedSelectedText = selectedText; // 存储当前选中的文本  
-            menu.style.top = `${event.pageY}px`;
-            menu.style.left = `${event.pageX}px`;
-            menu.style.display = 'block';
+            select_text = selectedText; // 存储当前选中的文本  
+            select_fun_menu.style.top = `${event.pageY}px`;
+            select_fun_menu.style.left = `${event.pageX}px`;
+            select_fun_menu.style.display = 'block';
             let nodeMap = textMap(document.body)
             HIGHTLIGHT.highlight(nodeMap)
             nodeMap.clear()
             // console.log(selectedText);
             // 点击其他地方隐藏菜单
             // document.addEventListener('click', () => {
-            //     menu.style.display = 'none';
-            //     // document.body.removeChild(menu);
+            //     select_fun_menu.style.display = 'none';
             // }, { once: true });
         }
         else
         {
-            menu.style.display = 'none'; // 隐藏菜单  
+            select_fun_menu.style.display = 'none'; // 隐藏菜单  
         }
     }
-    // 处理鼠标松开事件
+
     function menu_del_mouseup_loose_fun(event) {
         if (event.target.tagName === 'SPAN' && event.target.classList.contains('mt_highlight')) {
             event.preventDefault();
@@ -1124,24 +1128,45 @@
             menu_del.style.left = `${event.pageX}px`;
             menu_del.style.display = 'block';
             // console.log("tagName=",event.target.tagName);
-            console.log("classesKey=", event.target.getAttribute('classeskey'));
+            // console.log("classesKey=", event.target.getAttribute('classeskey'));
             // console.log("innerText=",event.target.innerText);
-            const deltext = event.target.innerText
-            const delclass =  event.target.getAttribute('classeskey')
+            select_text = event.target.innerText
+            select_class =  event.target.getAttribute('classeskey')
             // 点击其他地方隐藏菜单
             document.addEventListener('click', () => {
                 menu_del.style.display = 'none';
-                // document.body.removeChild(menu);
             }, { once: true });
-            document.getElementById('div_mouseupdel')?.addEventListener('click', (event) => {
-                // console.log("div_mouseupdel tagName=",event.target.tagName);
-                // console.log("div_mouseupdel innerText=",deltext);
-                del_word(delclass, deltext)
-                // alert('要删除的文本: ' + deltext); // 这里可以替换成删除操作
-                menu_del.style.display = 'none'; // 隐藏菜单
-            });
         }
     }
+    document.getElementById('div_mouseupdel')?.addEventListener('click', (event) => {
+        // console.log("div_mouseupdel tagName=",event.target.tagName);
+        // console.log("div_mouseupdel innerText=",deltext);
+        const deltext = select_text
+        const delstr = get_name(select_text)
+        del_word(select_class, delstr)
+        select_text = ""; // 清空选中的文本
+        select_class = ""; // 清空选中的class
+        // alert('要删除的文本: ' + deltext); // 这里可以替换成删除操作
+        menu_del.style.display = 'none'; // 隐藏菜单
+        // 获取所有带有highlight类名的span元素
+        const highlightedSpans = document.querySelectorAll('span.mt_highlight');
+        // 循环移除类名
+        highlightedSpans.forEach(span => {
+            // span.classList.remove('mt_highlight');
+            // span.parentNode.removeChild(span);
+            if (span.innerText == deltext) {
+                span.removeAttribute('classeskey');
+                span.removeAttribute('style');
+                span.removeAttribute('class');
+                // console.log("span.innerText=", span.innerText);
+                // console.log("parentNode.innerText=", span.parentNode.innerText);
+                // console.log("parentNode.innerText=", span.parentNode.parentNode.innerText);
+                // let newNode = document.createElement('span')
+                // newNode.innerHTML = span.innerText
+                // node.parentElement.replaceChild(newNode, node)
+            }
+        });
+    });
 
     if (GM_getValue('word_stroke_dis')) {
         document.getElementById('word_stroke').innerHTML = "划词开启";
@@ -1150,34 +1175,29 @@
         document.addEventListener('mouseup', mouseup_loose_fun);
     }
     
-    // document.getElementById('div_save')?.addEventListener('click', (event) => {
-    //     // const selectedText = window.getSelection().toString();
-    //     console.log("div_save");
-    //     if (savedSelectedText) {
-    //         // 使用 GM_setValue 保存选中的文本  
-    //         // GM_setValue('savedText', selectedText);
-    //         console.log("div_save", savedSelectedText);
-    //         // alert('保存成功: ' + savedSelectedText);
-    //         menu.style.display = 'none'; // 隐藏菜单
-    //     } else {
-    //         // alert('没有选中文本！');
+    // 点击菜单外部时隐藏菜单
+    // document.addEventListener('click', (event) => {
+    //     if (!select_fun_menu.contains(event.target)) {
+    //         // select_fun_menu.style.display = 'none';
     //     }
     // });
-    
-    // 点击菜单外部时隐藏菜单  
-    document.addEventListener('click', (event) => {
-        if (!menu.contains(event.target)) {
-            // menu.style.display = 'none';
-        }
-    });  
+    document.addEventListener('keydown', (event)=> {
+        // console.log('按下的键码为：', event.keyCode);
+        // console.log('按下的字符为：', event.key);
+        // 可以在这里添加更多根据按键进行的操作逻辑，比如判断按下的是不是回车键执行提交操作等
+        // select_fun_menu.style.display = 'none';
+        // console.log('keydown', event.key);
+    });
+/*
     // 防止菜单因为用户点击菜单项而消失
-    //document.addEventListener('contextmenu', (event) => {
-    //const customMenu = document.getElementById('custom-context-menu');
-    //    if (customMenu) {
-     //       event.preventDefault();
-      //  }
-    //});
-
+    document.addEventListener('contextmenu', (event) => {
+    const customMenu = document.getElementById('custom-context-select_fun_menu');
+       if (customMenu) {
+           event.preventDefault();
+       }
+    });
+*/
+/*
     // 定时检查内容的变化
     let lastValue = GM_getValue('key');
     function check_GM(){
@@ -1195,5 +1215,19 @@
         }
     }
     setInterval(check_GM, 4000); // 每3秒检查一次
+*/
+    function handleVisibilityChange() {
+        if (document.visibilityState === 'visible') {
+            console.log('标签页获得焦点，处于可见状态');
+            let nodeMap = textMap(document.body)
+            HIGHTLIGHT.highlight(nodeMap)
+            nodeMap = null
+        } else {
+            console.log('标签页失去焦点，处于不可见状态');
+        }
+    }
+
+    // 添加visibilitychange事件监听器
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 )()
